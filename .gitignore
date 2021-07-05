@@ -1,3 +1,7 @@
+*'*
+'*.mp3'
+*mp3
+*.mp3
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -128,6 +132,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 #MYconfig
-*.mp3
 *apikeys*
 *test*

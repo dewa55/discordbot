@@ -66,6 +66,15 @@ async def joke(ctx):
     response = requests.request("GET", url, headers=headers)
     await ctx.send(json.loads(response.text)['body'][0]['setup'])
     await ctx.send(json.loads(response.text)['body'][0]['punchline'])
+    
+@client.command()
+async def insult(ctx, name):
+    url = "https://evilinsult.com/generate_insult.php"
+    response = requests.request("GET", url)
+    if not name:
+        await ctx.send(response)
+    else:
+        await ctx.send(name + ", " + response)
 
 #Bot join voice channel
 @client.command(pass_context = True)
