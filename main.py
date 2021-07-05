@@ -167,9 +167,4 @@ async def queue(ctx, url:str):
         queues[guild_id] = [source]
     await ctx.send("Added to queue: " + song)
 
-@client.command()
-async def help(ctx):
-    #help = dischelp.help()
-    await ctx.send(dischelp.dhelp())
-
 client.run(BOTTOKEN)
