@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+#MYconfig
+*.mp3
+*apikeys*
+*test*

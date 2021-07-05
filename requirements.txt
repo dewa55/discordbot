@@ -1,0 +1,5 @@
+pip3 install discord
+pip3 install requests
+pip3 install -U discord.py[voice]
+sudo apt install ffmpeg -y #reboot
+pip3 install youtube_dl
