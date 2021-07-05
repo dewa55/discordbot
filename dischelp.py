@@ -1,4 +1,4 @@
-def help():
+def dhelp():
     print(
     '''
     !hello      ->  says hello

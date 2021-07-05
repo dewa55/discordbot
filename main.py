@@ -170,6 +170,6 @@ async def queue(ctx, url:str):
 @client.command()
 async def help(ctx):
     #help = dischelp.help()
-    await ctx.send(dischelp.help())
+    await ctx.send(dischelp.dhelp())
 
 client.run(BOTTOKEN)
