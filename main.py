@@ -7,6 +7,7 @@ import requests
 import json
 import youtube_dl
 import os, glob
+import dischelp
 
 
 # import api keys
@@ -165,5 +166,10 @@ async def queue(ctx, url:str):
     else:
         queues[guild_id] = [source]
     await ctx.send("Added to queue: " + song)
+
+@client.command()
+async def help(ctx):
+    #help = dischelp.help()
+    await ctx.send(dischelp.help())
 
 client.run(BOTTOKEN)
