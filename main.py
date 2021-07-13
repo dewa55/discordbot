@@ -22,6 +22,7 @@ queues = {}
 def ytdownload(url):
     ydl_opts = {
         'format': 'bestaudio/best',
+        'outtmpl': '/home/pi/Documents/discordbot/muzika/%(title)s.%(ext)s',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -127,6 +128,7 @@ async def stop(ctx):
 async def play(ctx, url:str):
     #song_there = os.path.isfile("*.mp3")
     try:
+        #for deletemp3 in glob.glob("/home/pi/Documents/discordbot/muzika/*.mp3"):
         for deletemp3 in glob.glob("*.mp3"):
             os.remove(deletemp3)
     except PermissionError:
@@ -138,6 +140,7 @@ async def play(ctx, url:str):
 
     ydl_opts = {
         'format': 'bestaudio/best',
+        #'outtmpl': '/home/pi/Documents/discordbot/muzika/%(title)s.%(ext)s',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -146,7 +149,8 @@ async def play(ctx, url:str):
     }
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
-    for file in os.listdir("./"):
+    #for file in os.listdir("/home/pi/Documents/discordbot/muzika/"):
+    for file in os.listdir("./."):
         if file.endswith(".mp3"):
             #os.rename(file, "song.mp3")
             songextname = file
