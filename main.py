@@ -45,8 +45,6 @@ def check_queue(ctx, id):
         source = queues[id].pop(0)
         player = voice.play(source)
 
-
-
 @client.event
 async def on_ready():
     print ("Discord bot is ready to use!")
@@ -85,14 +83,14 @@ async def join(ctx):
         channel = ctx.message.author.voice.channel
         voice = await channel.connect()
         #Play audio from local storage
-        source = FFmpegPCMAudio('rasputin.mp3')
-        player = voice.play(source)
+        #source = FFmpegPCMAudio('rasputin.mp3')
+        #player = voice.play(source)
         await ctx.send ("I have come my slavers prais me!")
     else:
         await ctx.send("You are not in a voice channel peasant, you must be in a voice channel you stupid fool!")
 
 # Bot leave voice channel
-@client.command(pass_context = True)
+@client.command(pass_context = True, aliases=['l', 'exit'])
 async def leave(ctx):
     if (ctx.voice_client):
         await ctx.guild.voice_client.disconnect()
@@ -110,7 +108,7 @@ async def pause(ctx):
         await ctx.send("Fuck you!, I am not playing any music at the moment, play some song first!")
 
 #Resume music
-@client.command(pass_context = True)
+@client.command(pass_context = True, aliases=['c'])
 async def resume(ctx):
     voice = discord.utils.get(client.voice_clients,guild=ctx.guild)
     if voice.is_paused():
@@ -118,13 +116,13 @@ async def resume(ctx):
     else:
         await ctx.send("You fool no song is paused!")
 
-@client.command(pass_context = True)
+@client.command(pass_context = True, aliases=['s'])
 async def stop(ctx):
     voice = discord.utils.get(client.voice_clients,guild=ctx.guild)
     voice.stop()
 
 #play <music_name>
-@client.command(pass_context = True)
+@client.command(pass_context = True, aliases=['p', 'yt'])
 async def play(ctx, url:str):
     #song_there = os.path.isfile("*.mp3")
     try:
@@ -159,7 +157,7 @@ async def play(ctx, url:str):
     player = voice.play(source, after=lambda x=None: check_queue(ctx, ctx.message.guild.id))
 
 
-@client.command(pass_context = True)
+@client.command(pass_context = True, aliases=['q', 'que'])
 async def queue(ctx, url:str):
     voice = ctx.guild.voice_client
     song = (ytdownload(url))
@@ -170,5 +168,15 @@ async def queue(ctx, url:str):
     else:
         queues[guild_id] = [source]
     await ctx.send("Added to queue: " + song)
+
+@client.command(aliases=['r'])
+async def radio(ctx, url: str = 'http://otvoreni.hr/media-player/create-playlist.php?stream=8807&amp;type=pls'):
+    channel = ctx.message.author.voice.channel
+    global player
+    try:
+        player = await channel.connect()
+    except:
+        pass
+    player.play(FFmpegPCMAudio('http://streaming.antenazagreb.hr/stream/player.html'))
 
 client.run(BOTTOKEN)
