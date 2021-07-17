@@ -121,8 +121,8 @@ async def stop(ctx):
     voice = discord.utils.get(client.voice_clients,guild=ctx.guild)
     voice.stop()
 
-#play <music_name>
-@client.command(pass_context = True, aliases=['p', 'yt'])
+#play <music_name>_ by downloading youtube
+""" @client.command(pass_context = True, aliases=['p', 'yt'])
 async def play(ctx, url:str):
     #song_there = os.path.isfile("*.mp3")
     try:
@@ -154,8 +154,22 @@ async def play(ctx, url:str):
             songextname = file
             songname = os.path.splitext(songextname)[0]
     source = FFmpegPCMAudio(songextname)
-    player = voice.play(source, after=lambda x=None: check_queue(ctx, ctx.message.guild.id))
+    player = voice.play(source, after=lambda x=None: check_queue(ctx, ctx.message.guild.id)) """
 
+# play withouth downloading 
+@client.command(pass_context = True, aliases=['p', 'yt'])
+async def play(ctx, url: str):
+    video_link = url
+    ydl_opts = {'format': 'bestaudio'}
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+    channel = ctx.message.author.voice.channel
+    voice = await channel.connect()
+
+    ydl_opts = {'format': 'bestaudio'}
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_link, download=False)
+        URL = info['formats'][0]['url']
+    voice.play(discord.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
 
 @client.command(pass_context = True, aliases=['q', 'que'])
 async def queue(ctx, url:str):
@@ -170,13 +184,13 @@ async def queue(ctx, url:str):
     await ctx.send("Added to queue: " + song)
 
 @client.command(aliases=['r'])
-async def radio(ctx, url: str = 'http://otvoreni.hr/media-player/create-playlist.php?stream=8807&amp;type=pls'):
+async def radio(ctx, url: str = 'https://stream3.dns69it.com:443/stream'):
     channel = ctx.message.author.voice.channel
     global player
     try:
         player = await channel.connect()
     except:
         pass
-    player.play(FFmpegPCMAudio('http://streaming.antenazagreb.hr/stream/player.html'))
+    player.play(FFmpegPCMAudio('https://stream3.dns69it.com:443/stream'))
 
 client.run(BOTTOKEN)
