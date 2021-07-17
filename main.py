@@ -183,14 +183,22 @@ async def queue(ctx, url:str):
         queues[guild_id] = [source]
     await ctx.send("Added to queue: " + song)
 
-@client.command(aliases=['r'])
-async def radio(ctx, url: str = 'https://stream3.dns69it.com:443/stream'):
+@client.command(pass_context = True, aliases=['r'])
+async def radio(ctx, radio:str = None):
     channel = ctx.message.author.voice.channel
-    global player
-    try:
-        player = await channel.connect()
-    except:
-        pass
-    player.play(FFmpegPCMAudio('https://stream3.dns69it.com:443/stream'))
+    if radio == 'mreznica':
+      player = await channel.connect()
+      player.play(FFmpegPCMAudio('https://stream3.dns69it.com:443/stream'))
+    elif radio == 'otvoreni':
+      player = await channel.connect()
+      player.play(FFmpegPCMAudio('https://stream.otvoreni.hr:443/otvoreni'))
+    elif radio == 'extrafm':
+      player = await channel.connect()
+      player.play(FFmpegPCMAudio('http://streams.extrafm.hr:8110/stream'))
+    elif radio == 'antena':
+      player = await channel.connect()
+      player.play(FFmpegPCMAudio('http://live.antenazagreb.hr:8000/stream'))
+    if radio is None:
+        await ctx.send("You did not specify radio, type !r [mreznica, otvoreni, extrafm, antena]")
 
 client.run(BOTTOKEN)
