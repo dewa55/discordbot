@@ -10,7 +10,7 @@ import os, glob
 from itertools import count
 from discord import player
 import random
-
+import asyncio
 
 # import api keys
 from apikeys import *
