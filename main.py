@@ -212,6 +212,7 @@ async def radio(ctx, radio:str = None):
       player.play(FFmpegPCMAudio('http://live.antenazagreb.hr:8000/stream'))
     if radio is None:
         await ctx.send("You did not specify radio, type !r [mreznica, otvoreni, extrafm, antena]")
+#Bot disconnect after everyone leave channel
 @client.event
 async def on_voice_state_update(member, before, after):
     voice_state = member.guild.voice_client
