@@ -3,6 +3,9 @@ import discord
 from discord.ext import commands
 from discord.flags import Intents
 from discord import FFmpegPCMAudio
+intents = discord.Intents.default()
+Intents.voice_states = True
+from discord.ext.commands import Bot 
 import requests
 import json
 import youtube_dl
@@ -209,7 +212,14 @@ async def radio(ctx, radio:str = None):
       player.play(FFmpegPCMAudio('http://live.antenazagreb.hr:8000/stream'))
     if radio is None:
         await ctx.send("You did not specify radio, type !r [mreznica, otvoreni, extrafm, antena]")
-
+@client.event
+async def on_voice_state_update(member, before, after):
+    voice_state = member.guild.voice_client
+    # Checking if the bot is connected to a channel and if there is only 1 member connected to it (the bot itself)
+    if voice_state is not None and len(voice_state.channel.members) == 1:
+        # You should also check if the song is still playing
+        await voice_state.disconnect()
+        
 player1 = ""
 player2 = ""
 turn = ""
