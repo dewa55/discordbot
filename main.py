@@ -352,4 +352,30 @@ async def place_error(ctx, error):
     elif isinstance(error, commands.BadArgument):
         await ctx.send("Please make sure to enter an integer.")
 
+@client.command()
+async def free_epic(ctx):
+    url = "https://free-epic-games.p.rapidapi.com/free"
+
+    headers = {
+    	"X-RapidAPI-Key": FREE_EPIC,
+    	"X-RapidAPI-Host": "free-epic-games.p.rapidapi.com"
+    }
+
+    response = requests.request("GET", url, headers=headers)
+    
+    # Parse the response text as a JSON object
+    parsed_response = json.loads(response.text)
+    
+    # Access the "freeGames" field of the JSON object
+    free_games = parsed_response['freeGames']
+    
+    # Access the "current" field of the "freeGames" object
+    current_games = free_games['current']
+    
+    # Iterate over the list of games
+    for game in current_games:
+      # Print the "title" field of each game
+      await ctx.send(game['title'])
+      await ctx.send(game['description'])
+
 client.run(BOTTOKEN)
