@@ -375,7 +375,7 @@ async def free_epic(ctx):
     # Iterate over the list of games
     for game in current_games:
       # Print the "title" field of each game
-      await ctx.send(game['title'])
+      await ctx.send(":pencil2:" + game['title'] + ":pencil2:")
       await ctx.send(game['description'])
 
 client.run(BOTTOKEN)
