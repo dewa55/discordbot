@@ -14,6 +14,7 @@ from itertools import count
 from discord import player
 import random
 import asyncio
+from bs4 import BeautifulSoup
 
 # import api keys
 from apikeys import *
@@ -378,4 +379,14 @@ async def free_epic(ctx):
       await ctx.send(":pencil2:" + game['title'] + ":pencil2:")
       await ctx.send(game['description'])
 
+@client.command()
+async def free_book(ctx):
+    url = "https://www.packtpub.com/free-learning"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    title = soup.find('div', class_='product-info__content').find('h3').text
+    await ctx.send(title)
+
 client.run(BOTTOKEN)
+
+
