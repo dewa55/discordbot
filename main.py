@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # import api keys
 from apikeys import *
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 client = commands.Bot(command_prefix = '!', intents=intents)
 
