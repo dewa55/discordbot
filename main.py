@@ -8,13 +8,16 @@ import asyncio
 import random
 from discord import player
 from itertools import count
-import yt_dlp as youtube_dlc
+import yt_dlp
+import asyncio
 import json
 import requests
 import discord
 from discord.ext import commands
+from discord import app_commands
 from discord.flags import Intents
 from discord import FFmpegPCMAudio
+from collections import deque
 intents = discord.Intents.default()
 Intents.voice_states = True
 
@@ -23,370 +26,53 @@ Intents.voice_states = True
 
 intents = discord.Intents.all()
 intents.members = True
+intents.message_content = True
 client = commands.Bot(command_prefix='!', intents=intents)
 
+GUILD_ID = 73782100775415808
+SONG_QUEUES = {}
 
-queues = {}
-
-
-def ytdownload(url):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': '/home/pi/Documents/discordbot/muzika/%(title)s.%(ext)s',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-    }
-    with youtube_dlc.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    for file in os.listdir("./"):
-        if file.endswith(".mp3"):
-            # os.rename(file, "song.mp3")
-            songextname = file
-            songname = os.path.splitext(songextname)[0]
-            return songextname
+# new play feature
+async def search_ytdlp_async(query, ydl_opts):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, lambda: _extract(query, ydl_opts))
 
 
-def check_queue(ctx, id):
-    if queues[id] != []:
-        voice = ctx.guild.voice_client
-        source = queues[id].pop(0)
-        player = voice.play(source)
+def _extract(query, ydl_opts):
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        return ydl.extract_info(query, download=False)
+    
+    
+async def play_next_song(voice_client, guild_id, channel):
+    if SONG_QUEUES[guild_id]:
+        audio_url, title = SONG_QUEUES[guild_id].popleft()
+        
+        ffmpeg_options = {
+         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+         "options": "-vn -c:a libopus -b:a 256k -ar 48000 -ac 2"
+       }
 
 
-@client.event
-async def on_ready():
-    print("Discord bot is ready to use!")
-    print("-----------------------------")
-
-# Says Hello
-
-
-@client.command()
-async def hello(ctx):
-    await ctx.send("Hello I am the WhitKnight! I am your master!")
-
-# Prints joke
-
-
-@client.command()
-async def joke(ctx):
-    url = "https://dad-jokes.p.rapidapi.com/random/joke"
-    headers = {
-        'x-rapidapi-key': RAPIDKEY,
-        'x-rapidapi-host': "dad-jokes.p.rapidapi.com"
-    }
-    response = requests.request("GET", url, headers=headers)
-    await ctx.send(json.loads(response.text)['body'][0]['setup'])
-    await ctx.send(json.loads(response.text)['body'][0]['punchline'])
-
-
-@client.command()
-async def insult(ctx, name=None):
-    url = "https://evilinsult.com/generate_insult.php"
-    response = requests.request("GET", url)
-    if name is None:
-        await ctx.send(response.text)
+        source = discord.FFmpegOpusAudio(
+          audio_url, **ffmpeg_options, executable="/bin/ffmpeg")
+        
+        def after_play(error):
+            if error:
+                print(f"Error playing {title}: {error}")
+            asyncio.run_coroutine_threadsafe(play_next_song(voice_client, guild_id, channel), client.loop)
+        
+        voice_client.play(source, after=after_play)
+        asyncio.create_task(channel.send(f"Now playing: **{title}**"))
     else:
-        await ctx.send(name + ", " + response.text)
+      await voice_client.disconnect()
+      SONG_QUEUES[guild_id] = deque()
 
-# Bot join voice channel
+        
+#Get free game on epic
 
-
-@client.command(pass_context=True)
-async def join(ctx):
-    if (ctx.author.voice):
-        channel = ctx.message.author.voice.channel
-        voice = await channel.connect()
-        # Play audio from local storage
-        # source = FFmpegPCMAudio('rasputin.mp3')
-        # player = voice.play(source)
-        await ctx.send("I have come my slavers prais me!")
-    else:
-        await ctx.send("You are not in a voice channel peasant, you must be in a voice channel you stupid fool!")
-
-# Bot leave voice channel
-
-
-@client.command(pass_context=True, aliases=['l', 'exit'])
-async def leave(ctx):
-    if (ctx.voice_client):
-        await ctx.guild.voice_client.disconnect()
-        await ctx.send("I am leaving this wretched voice channel!")
-    else:
-        await ctx.send("I am not in a fucking voice channel!")
-
-# Pause music that is  playing
-
-
-@client.command(pass_context=True)
-async def pause(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice.is_playing():
-        voice.pause()
-    else:
-        await ctx.send("Fuck you!, I am not playing any music at the moment, play some song first!")
-
-# Resume music
-
-
-@client.command(pass_context=True, aliases=['c'])
-async def resume(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice.is_paused():
-        voice.resume()
-    else:
-        await ctx.send("You fool no song is paused!")
-
-
-@client.command(pass_context=True, aliases=['s'])
-async def stop(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    voice.stop()
-
-# play <music_name>_ by downloading youtube
-""" @client.command(pass_context = True, aliases=['p', 'yt'])
-async def play(ctx, url:str):
-    #song_there = os.path.isfile("*.mp3")
-    try:
-        #for deletemp3 in glob.glob("/home/pi/Documents/discordbot/muzika/*.mp3"):
-        for deletemp3 in glob.glob("*.mp3"):
-            os.remove(deletemp3)
-    except PermissionError:
-        await ctx.send("Wait for the current playing music to end or use the '!stop' command")
-        return
-
-    channel = ctx.message.author.voice.channel
-    voice = await channel.connect()
-
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        #'outtmpl': '/home/pi/Documents/discordbot/muzika/%(title)s.%(ext)s',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-    }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    #for file in os.listdir("/home/pi/Documents/discordbot/muzika/"):
-    for file in os.listdir("./."):
-        if file.endswith(".mp3"):
-            #os.rename(file, "song.mp3")
-            songextname = file
-            songname = os.path.splitext(songextname)[0]
-    source = FFmpegPCMAudio(songextname)
-    player = voice.play(source, after=lambda x=None: check_queue(ctx, ctx.message.guild.id)) """
-
-# play withouth downloading
-
-
-@client.command(pass_context=True, aliases=['p', 'yt'])
-async def play(ctx, url: str):
-    video_link = url
-    ydl_opts = {'format': 'bestaudio'}
-    FFMPEG_OPTIONS = {
-        'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-    channel = ctx.message.author.voice.channel
-    voice = await channel.connect()
-
-    ydl_opts = {'format': 'bestaudio'}
-    with youtube_dlc.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_link, download=False)
-        URL = info['formats'][0]['url']
-    voice.play(discord.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-    while voice.is_playing():  # Checks if voice is playing
-        await asyncio.sleep(1)  # While it's playing it sleeps for 1 second
-    else:
-        await asyncio.sleep(15)  # If it's not playing it waits 15 seconds
-    while voice.is_playing():  # and checks once again if the bot is not playing
-        break  # if it's playing it breaks
-    else:
-        await voice.disconnect()  # if not it disconnects
-
-
-@client.command(pass_context=True, aliases=['q', 'que'])
-async def queue(ctx, url: str):
-    voice = ctx.guild.voice_client
-    song = (ytdownload(url))
-    source = FFmpegPCMAudio(song)
-    guild_id = ctx.message.guild.id
-    if guild_id in queues:
-        queues[guild_id.append(source)]
-    else:
-        queues[guild_id] = [source]
-    await ctx.send("Added to queue: " + song)
-
-
-@client.command(pass_context=True, aliases=['r'])
-async def radio(ctx, radio: str = None):
-    channel = ctx.message.author.voice.channel
-    if radio == 'mreznica':
-        player = await channel.connect()
-        player.play(FFmpegPCMAudio('https://stream3.dns69it.com:443/stream'))
-    elif radio == 'otvoreni':
-        player = await channel.connect()
-        player.play(FFmpegPCMAudio('https://stream.otvoreni.hr:443/otvoreni'))
-    elif radio == 'extrafm':
-        player = await channel.connect()
-        player.play(FFmpegPCMAudio('http://streams.extrafm.hr:8110/stream'))
-    elif radio == 'antena':
-        player = await channel.connect()
-        player.play(FFmpegPCMAudio('http://live.antenazagreb.hr:8000/stream'))
-    if radio is None:
-        await ctx.send("You did not specify radio, type !r [mreznica, otvoreni, extrafm, antena]")
-# Bot disconnect after everyone leave channel
-
-
-@client.event
-async def on_voice_state_update(member, before, after):
-    voice_state = member.guild.voice_client
-    # Checking if the bot is connected to a channel and if there is only 1 member connected to it (the bot itself)
-    if voice_state is not None and len(voice_state.channel.members) == 1:
-        # You should also check if the song is still playing
-        await voice_state.disconnect()
-
-player1 = ""
-player2 = ""
-turn = ""
-gameOver = True
-
-board = []
-
-winningConditions = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-]
-
-
-@client.command()
-async def tictactoe(ctx, p1: discord.Member, p2: discord.Member):
-    global count
-    global player1
-    global player2
-    global turn
-    global gameOver
-
-    if gameOver:
-        global board
-        board = [":white_large_square:", ":white_large_square:", ":white_large_square:",
-                 ":white_large_square:", ":white_large_square:", ":white_large_square:",
-                 ":white_large_square:", ":white_large_square:", ":white_large_square:"]
-        turn = ""
-        gameOver = False
-        count = 0
-
-        player1 = p1
-        player2 = p2
-
-        # print the board
-        line = ""
-        for x in range(len(board)):
-            if x == 2 or x == 5 or x == 8:
-                line += " " + board[x]
-                await ctx.send(line)
-                line = ""
-            else:
-                line += " " + board[x]
-
-        # determine who goes first
-        num = random.randint(1, 2)
-        if num == 1:
-            turn = player1
-            await ctx.send("It is <@" + str(player1.id) + ">'s turn.")
-        elif num == 2:
-            turn = player2
-            await ctx.send("It is <@" + str(player2.id) + ">'s turn.")
-    else:
-        await ctx.send("A game is already in progress! Finish it before starting a new one.")
-
-
-@client.command()
-async def place(ctx, pos: int):
-    global turn
-    global player1
-    global player2
-    global board
-    global count
-    global gameOver
-
-    if not gameOver:
-        mark = ""
-        if turn == ctx.author:
-            if turn == player1:
-                mark = ":regional_indicator_x:"
-            elif turn == player2:
-                mark = ":o2:"
-            if 0 < pos < 10 and board[pos - 1] == ":white_large_square:":
-                board[pos - 1] = mark
-                count += 1
-
-                # print the board
-                line = ""
-                for x in range(len(board)):
-                    if x == 2 or x == 5 or x == 8:
-                        line += " " + board[x]
-                        await ctx.send(line)
-                        line = ""
-                    else:
-                        line += " " + board[x]
-
-                checkWinner(winningConditions, mark)
-                print(count)
-                if gameOver == True:
-                    await ctx.send(mark + " wins!")
-                elif count >= 9:
-                    gameOver = True
-                    await ctx.send("It's a tie!")
-
-                # switch turns
-                if turn == player1:
-                    turn = player2
-                elif turn == player2:
-                    turn = player1
-            else:
-                await ctx.send("Be sure to choose an integer between 1 and 9 (inclusive) and an unmarked tile.")
-        else:
-            await ctx.send("It is not your turn.")
-    else:
-        await ctx.send("Please start a new game using the !tictactoe command.")
-
-
-def checkWinner(winningConditions, mark):
-    global gameOver
-    for condition in winningConditions:
-        if board[condition[0]] == mark and board[condition[1]] == mark and board[condition[2]] == mark:
-            gameOver = True
-
-
-@tictactoe.error
-async def tictactoe_error(ctx, error):
-    print(error)
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Please mention 2 players for this command.")
-    elif isinstance(error, commands.BadArgument):
-        await ctx.send("Please make sure to mention/ping players (ie. <@688534433879556134>).")
-
-
-@place.error
-async def place_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Please enter a position you would like to mark.")
-    elif isinstance(error, commands.BadArgument):
-        await ctx.send("Please make sure to enter an integer.")
-
-
-@client.command()
-async def free_epic(ctx):
+@client.tree.command(name="free_epic", description="Check free games on EPIC game launcher")
+async def free_epic(interaction: discord.Interaction):
+    await interaction.response.defer()
     url = "https://free-epic-games.p.rapidapi.com/free"
 
     headers = {
@@ -408,62 +94,138 @@ async def free_epic(ctx):
     # Iterate over the list of games
     for game in current_games:
         # Print the "title" field of each game
-        await ctx.send(":pencil2:" + game['title'] + ":pencil2:")
-        await ctx.send(game['description'])
+        await interaction.followup.send(":pencil2:" + game['title'] + ":pencil2:")
+        await interaction.followup.send(game['description'])
 
 
-@client.command()
-async def free_book(ctx):
-    url = "https://www.packtpub.com/free-learning"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    title = soup.find('div', class_='product-info__content').find('h3').text
-    await ctx.send(title)
+# new way to play music
+@client.tree.command(name="play", description="Play a song or add it to the queue")
+@app_commands.describe(song_query="Search query")
+async def play(interaction: discord.Interaction, song_query: str):
+    await interaction.response.defer()
 
-@client.command()
-async def create_poll(ctx, question, duration, *options):
-    if len(options) < 2 or len(options) > 10:
-        await ctx.send("Please provide between 2 and 10 options.")
+
+    voice_channel = interaction.user.voice.channel
+
+    if voice_channel is None:
+        await interaction.followup.send("You must be in a voice channel.")
         return
 
-    # Create poll message
-    poll_embed = discord.Embed(title=question, color=0x3498db)
-    for i, option in enumerate(options):
-        poll_embed.add_field(name=f"Option {i + 1}", value=option, inline=False)
-    poll_message = await ctx.send(embed=poll_embed)
+    voice_client = interaction.guild.voice_client
+    if voice_client is None:
+        voice_client = await voice_channel.connect()
+    elif voice_channel != voice_client.channel:
+        await voice_client.move_to(voice_channel)
 
-    # Add reactions for voting
-    for i in range(len(options)):
-        await poll_message.add_reaction(chr(0x31 + i))  # Unicode code point for 1, 2, 3, ...
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "noplaylist": True,
+        "youtube_include_dash_manifest": False,
+        "youtube_include_hls_manifest": False,
+        "quiet": True,
+        "extract_flat": False,
+        'outtmpl': '/home/pi/Documents/discordbot/muzika/%(title)s.%(ext)s',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+    }
 
-    # Set up a task to close the poll after the specified duration
-    await asyncio.sleep(int(duration))
-    await close_poll(ctx, poll_message)
+    query = "ytsearch1: " + song_query
+    results = await search_ytdlp_async(query, ydl_opts)
+    tracks = results.get("entries", [])
+    if tracks is None:
+        await interaction.followup.send("No tracks found.")
+        return
 
-async def close_poll(ctx, poll_message):
-    # Get the poll results and close the poll
-    results = await get_poll_results(poll_message)
-    await ctx.send("Poll closed! Results:")
-    await ctx.send(results)
-    await poll_message.delete()
+    first_track = tracks[0]
+    audio_url = first_track["url"]
+    title = first_track.get("title", "Unknown")
+    
+    guild_id = str(interaction.guild_id)
+    if SONG_QUEUES.get(guild_id) is None:
+        SONG_QUEUES[guild_id] = deque()
+    
+    SONG_QUEUES[guild_id].append((audio_url, title))
+    
+    if voice_client.is_playing() or voice_client.is_paused():
+        await interaction.followup.send(f"Added to queue: **{title}**")
+    else:
+        await interaction.followup.send(f"Now playing: **{title}**")
+        await play_next_song(voice_client, guild_id, interaction.channel)
 
-async def get_poll_results(poll_message):
-    # Get reactions from the poll message
-    reactions = poll_message.reactions
+@client.tree.command(name="skip", description="Skips the current playing song")
+async def skip(interaction: discord.Interaction):
+    if interaction.guild.voice_client and (interaction.guild.voice_client.is_playing() or interaction.guild.voice_client.is_paused()):
+        interaction.guild.voice_client.stop()
+        await interaction.response.send_message("Skipped the current song.")
+    else:
+        await interaction.response.send_message("Not playing anything to skip.")
 
-    # Construct and return a string with the poll results
-    results = "Results:\n"
-    for reaction in reactions:
-        results += f"{reaction.emoji}: {reaction.count - 1} vote(s)\n"
 
-    return results
+@client.tree.command(name="pause", description="Pause the currently playing song.")
+async def pause(interaction: discord.Interaction):
+    voice_client = interaction.guild.voice_client
+
+    # Check if the bot is in a voice channel
+    if voice_client is None:
+        return await interaction.response.send_message("I'm not in a voice channel.")
+
+    # Check if something is actually playing
+    if not voice_client.is_playing():
+        return await interaction.response.send_message("Nothing is currently playing.")
+    
+    # Pause the track
+    voice_client.pause()
+    await interaction.response.send_message("Playback paused!")
+
+
+@client.tree.command(name="resume", description="Resume the currently paused song.")
+async def resume(interaction: discord.Interaction):
+    voice_client = interaction.guild.voice_client
+
+    # Check if the bot is in a voice channel
+    if voice_client is None:
+        return await interaction.response.send_message("I'm not in a voice channel.")
+
+    # Check if it's actually paused
+    if not voice_client.is_paused():
+        return await interaction.response.send_message("I’m not paused right now.")
+    
+    # Resume playback
+    voice_client.resume()
+    await interaction.response.send_message("Playback resumed!")
+
+
+@client.tree.command(name="stop", description="Stop playback and clear the queue.")
+async def stop(interaction: discord.Interaction):
+    voice_client = interaction.guild.voice_client
+
+    # Check if the bot is in a voice channel
+    if not voice_client or not voice_client.is_connected():
+        return await interaction.response.send_message("I'm not connected to any voice channel.")
+
+    # Clear the guild's queue
+    guild_id_str = str(interaction.guild_id)
+    if guild_id_str in SONG_QUEUES:
+        SONG_QUEUES[guild_id_str].clear()
+
+    # If something is playing or paused, stop it
+    if voice_client.is_playing() or voice_client.is_paused():
+        voice_client.stop()
+
+    # (Optional) Disconnect from the channel
+    await voice_client.disconnect()
+
+    await interaction.response.send_message("Stopped playback and disconnected!")
 
 @client.event
-async def on_reaction_add(reaction, user):
-    # Check if the reaction is added to a poll message
-    if reaction.message.embeds:
-        embed = reaction.message.embeds[0]
-        if user != client.user and embed.title:
-            await reaction.remove(user)
-            
+async def on_ready():
+    test_guild = discord.Object(id=GUILD_ID)
+    # Comment out clear_commands if you want to preserve your registered commands:
+    synced = await client.tree.sync()
+    print(f"Synced {len(synced)} command(s) to guild {GUILD_ID}")
+    print("Discord bot is ready to use!")
+
 client.run(BOTTOKEN)
