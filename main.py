@@ -29,7 +29,6 @@ intents.members = True
 intents.message_content = True
 client = commands.Bot(command_prefix='!', intents=intents)
 
-GUILD_ID = 73782100775415808
 SONG_QUEUES = {}
 
 # new play feature
@@ -222,10 +221,8 @@ async def stop(interaction: discord.Interaction):
 
 @client.event
 async def on_ready():
-    test_guild = discord.Object(id=GUILD_ID)
     # Comment out clear_commands if you want to preserve your registered commands:
     synced = await client.tree.sync()
-    print(f"Synced {len(synced)} command(s) to guild {GUILD_ID}")
     print("Discord bot is ready to use!")
 
 client.run(BOTTOKEN)
